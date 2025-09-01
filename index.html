@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Game: complete heart</title>
+<style>
+  :root{
+    --bg1:#89cff0; --bg2:#b8d7e9; --accent:#26457a; --accent-dark:#26457a;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    font-family:Arial, Helvetica, sans-serif; background:linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:var(--accent-dark); padding:20px;
+  }
+
+  .panel{ width:100%; max-width:760px; background:rgba(255,255,255,0.9); border-radius:14px; padding:22px; text-align:center;
+    box-shadow:0 10px 30px rgba(24, 22, 146, 0.12);
+  }
+
+  h1{ margin:0 0 8px; font-size:20px }
+  p.lead{ margin:6px 0 16px; color:#26457a }
+
+  .heart-wrap{ display:flex; justify-content:center; margin: 8px 0 14px; }
+  .heart-container{ width:260px; max-width:60vw; transition:transform .6s ease; }
+
+  /* SVG reglas para poder animar correctamente */
+  svg.heart-svg{ width:100%; height:auto; display:block; overflow:visible; }
+
+  /* aplicar transform sobre el contenido del SVG */
+  .heart-shape{
+    fill: var(--accent);
+    stroke: rgba(46, 68, 196, 0.9);
+    stroke-width:0;
+    transition: transform .8s cubic-bezier(.2,.85,.32,1), filter .6s ease, opacity .4s;
+    filter: drop-shadow(0 6px 12px rgba(29, 41, 214, 0.12));
+    /* hace que transform se aplique respecto al path */
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+  }
+
+  .heart-left{ transform: translateX(-28px) rotate(-8deg); }
+  .heart-right{ transform: translateX(28px) rotate(8deg); }
+
+  .heart-container.completo .heart-left,
+  .heart-container.completo .heart-right{
+    transform: translateX(0) rotate(0);
+    filter: drop-shadow(0 10px 30px rgba(25, 43, 202, 0.18));
+  }
+
+  .heart-container.completo{ transform: scale(1.03); }
+
+  .controls{ display:flex; gap:10px; justify-content:center; align-items:center; margin-top:12px; flex-wrap:wrap; }
+  input[type=number]{ width:120px; padding:10px 12px; border-radius:10px; border:1px solid #26457a; font-size:16px; text-align:center; }
+  button{ padding:10px 14px; border-radius:10px; border:none; background:linear-gradient(180deg,#4682b4,#89cff0); color:#fff; font-weight:600; cursor:pointer; }
+  button.secondary{ background:transparent; color:var(--accent-dark); border:1px solid rgba(137, 207, 240); }
+
+  .hint{ margin-top:12px; min-height:22px; color:#26457a; font-weight:600; }
+  .final-card{ margin-top:16px; display:none; align-items:center; gap:12px; justify-content:center; flex-direction:column; }
+  .final-card img{ width:160px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+  .final-card.show{ display:flex; animation: appear .4s ease; }
+  @keyframes appear{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+  @media (max-width:420px){
+    input[type=number]{ width:100px; padding:8px }
+    .final-card img{ width:130px }
+  }
+</style>
+</head>
+<body>
+  <div class="panel" role="main">
+    <h1> Pon un número del 1-100 miamor</h1>
+    <p class="lead"> ♥ </p>
+
+    <div class="heart-wrap">
+      <div class="heart-container" id="heartContainer" aria-hidden="false">
+        <!-- SVG con clipPath nativo: duplicamos el mismo path y aplicamos dos recortes (izq/der) -->
+        <svg class="heart-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Corazón partido">
+          <defs>
+            <clipPath id="leftClip"><rect x="0" y="0" width="50" height="100" /></clipPath>
+            <clipPath id="rightClip"><rect x="50" y="0" width="50" height="100" /></clipPath>
+          </defs>
+
+          <!-- dibujamos el corazón completo (ambos usan el mismo 'd') -->
+          <path class="heart-shape heart-left" clip-path="url(#leftClip)"
+            d="M50 16
+               C36 2,  0 18, 20 44
+               C34 64, 50 82, 50 82
+               C50 82, 66 64, 80 44
+               C100 18, 64 2, 50 16 Z" />
+
+          <path class="heart-shape heart-right" clip-path="url(#rightClip)"
+            d="M50 16
+               C36 2,  0 18, 20 44
+               C34 64, 50 82, 50 82
+               C50 82, 66 64, 80 44
+               C100 18, 64 2, 50 16 Z" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="controls" role="form">
+      <input id="guess" type="number" min="1" max="100" placeholder="Tu número (1-100)" />
+      <button id="btnGuess">Adivinar</button>
+      <button id="btnReset" class="secondary">Reiniciar</button>
+    </div>
+
+    <div class="hint" id="hint" aria-live="polite"></div>
+
+    <div class="final-card" id="finalCard" aria-hidden="true">
+      <h2> ¡Lo lograste miamor! </h2>
+      <p>FELICIDADES MIAMOR!!! Hoy es una fecha muy especial; ¡ESTAMOS DOS MESES JUNTOS MIAMOR!
+        el tiempo a tu lado pasó muy rapido, parece que hubiese sido ayer cuando me enamoré de ti,
+        tienes que saber que te haz vuelto indispensable en mi vida,
+        no creí enamorarme tanto de alguien como me yo me enamoré de tí y
+        quiero seguir enamorandome cada dia más como lo estoy haciendo todo este tiempo.</p>
+      <img id="finalImage" src="ASSETS/images/seugmin.jpg" alt="foto de seugmin y felix" />
+      <p>Gracias a tí, las canciones de amor ya no se escuchan igual, ahora te pienso cada vez que escucho una,todos
+        los poemas que leo ahora te tienen cómo protagonista, incluso cuando toco el piano,cada acorde grita tu nombre como si cada tecla estuviese poseida por tu inigualable belleza,
+     TE VEO EN TODOS LADOS, esos hermsos ojitos tuyos me hicieron ceer que no hay otros que brillen como ellos y aún en la icertidumbre de saber cómo brillan en persona,
+      ya sé que son los ojitos más hermosos del mundo.</p>
+
+      <img id="finalImage" src="ASSETS/images/NAOMI.JPG" alt="foto de los ojos de naomi" />
+      <p>Conocerte no fué una simple coincidencia,por que cada "Te amo" es un regalo y cada momento atu lado se siente como un sueño, uno del que nunca quiero despertar, un sueño que por más que no parezca es real y tu eres mi realidad, un sueño que aún no está completo
+        porque todavía nos falta mucho por vivir juntos, espero siempre con ansias el momento en que te vea y por fin te pueda abrazar y decir lo mucho que me importas, tengo mil palabras en la garganta que necesito decirtelas, tengo muchos besos esperando por tí, muchas cosas en mente para hacer juntos
+        y tantas ganas de quedarme junto a tí toda una eternidad, hasta que del universo no quede nada y de la galaxia solo quenden cenizas, aún si sucede eso yo sé que te seguire amando
+        porque nadie ha hecho tanto por mí cómo tú.</p>
+     <img id="finalImage" src="ASSETS/images/cuando vuelo hacia ti.jpg" alt="foto de Su Zazai y Zhang Lurang" />
+     
+     <p>Cada experiencia contigo es única cada vez que hablamos, jugamos ,reimos o incluso si lloramos. Eres la razón por la que me esfuerzo cada día, eres el motivo por el que trato de hacer las cosas bien, no quiero defraudar a la niña que cree en mí, no quiero defraudar a mi novieccita linda porque yo y tú tenemos un futuro planeado,
+      ambos sabemos que hacer cuando por fin estemos juntos y quiero cumplir cada promesa que te hice. Sé que no soy el chico perfecto pero si soy el chico que te ama con locura, un chico que está dispuesto a hacer todo por la chica que ama y esa chica eres tú.
+      Miamor, perdóname algún momento te hice sentir mal, como en toda relación las peleas no faltan pero quiero que sepas que voy a dar todo para que nuestra relación salga adelante, por que te amo y no te dejaré ir.
+    </p>
+     <img id="finalImage" src="ASSETS/images/Felix.jpg" alt="foto de felix y seugmin" />
+     <p>Para finalizar, te quiero agradecer por llegar a mi vida, enserio muchas gracias por ser mi novia, eres la mejor del mundo y no me arrepiento de nada contigo, gracias por escribirme aquella vez, gracias por estar conmigo, recuerda que yo te amo y te voy a amar con la intencidad con la que siempre lo hice.
+      Te amo mucho mivida, ahora son dos meses pero se convertiran en una vida entera.
+      FOTO DE NUESTRO HIJITO QUE TE AMA MUCHO</p>
+      <img id="finalImage" src="ASSETS/images/Mochi.jpeg" alt="foto de Mochi" />
+    </div>
+  </div>
+
+<script>
+  let numeroSecreto = Math.floor(Math.random() * 100) + 1;
+  let intentos = 0;
+  const guessInput = document.getElementById('guess');
+  const hint = document.getElementById('hint');
+  const heartContainer = document.getElementById('heartContainer');
+  const finalCard = document.getElementById('finalCard');
+  const btnGuess = document.getElementById('btnGuess');
+  const btnReset = document.getElementById('btnReset');
+
+  // Si quieres ver el número secreto para probar, descomenta la siguiente línea:
+  // console.log("Número secreto (para probar):", numeroSecreto);
+
+  function adivinar(){
+    const val = parseInt(guessInput.value, 10);
+    intentos++;
+    if (isNaN(val)){
+      hint.textContent = "Adivina el número entre (1-100).";
+      return;
+    }
+    if (val < 1 || val > 100){
+      hint.textContent = "ENTRE 1-100 MIAMOR.";
+      return;
+    }
+
+    if (val === numeroSecreto){
+      hint.textContent = ` ¡Adivinaste en ${intentos} intento${intentos>1?'s':''}!`;
+      heartContainer.classList.add('completo');
+      finalCard.classList.add('show');
+      finalCard.setAttribute('aria-hidden','false');
+      guessInput.disabled = true;
+      btnGuess.disabled = true;
+    } else if (val > numeroSecreto){
+      hint.textContent = "Más bajo...";
+    } else {
+      hint.textContent = "Más alto...";
+    }
+  }
+
+  function reiniciar(){
+    numeroSecreto = Math.floor(Math.random() * 100) + 1;
+    intentos = 0;
+    guessInput.value = '';
+    guessInput.disabled = false;
+    btnGuess.disabled = false;
+    heartContainer.classList.remove('completo');
+    finalCard.classList.remove('show');
+    finalCard.setAttribute('aria-hidden','true');
+    hint.textContent = '';
+    guessInput.focus();
+    // console.log("Nuevo número secreto (para probar):", numeroSecreto);
+  }
+
+  btnGuess.addEventListener('click', adivinar);
+  btnReset.addEventListener('click', reiniciar);
+  guessInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') adivinar(); });
+  guessInput.focus();
+</script>
+</body>
+</html>
